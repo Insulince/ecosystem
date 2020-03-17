@@ -5,13 +5,28 @@ import (
 	"github.com/Insulince/ecosystem/pkg/card"
 	"github.com/Insulince/ecosystem/pkg/grid"
 	"github.com/Insulince/ecosystem/pkg/location"
-	"log"
 	"strings"
 )
 
 const (
 	rows    = 4
 	columns = 5
+
+	Candidates = `
+	bbbbbbbbbbbb
+	BBBBBB
+	TTTTTTTTTT
+	EEEEEEEE
+	RRRRRRRR
+	FFFFFFFFFFFF
+	SSSSSSSSSSSSSSSSSSS
+	DDDDDDDDDDDD
+	`
+	//	BB
+	// 	MMMMMMMMMMMMMMMMMMMM
+	// 	dddddddd
+	// 	S
+	// 	WWWWWWWWWWWW
 )
 
 type ecosystem struct {
@@ -508,14 +523,14 @@ func (e *ecosystem) calculateStream() int {
 				if !found {
 					found = true
 				} else {
-					log.Println("WARNING: Inefficient grid. More than 1 stream found, but only 1 sufficient for maximum points (unless this is a dragonfly play).")
+					//log.Println("WARNING: Inefficient grid. More than 1 stream found, but only 1 sufficient for maximum points (unless this is a dragonfly play).")
 				}
 			}
 		}
 	}
 
 	if !found {
-		log.Println("WARNING: Inefficient grid. Should include 1 stream to gain 8 points.")
+		//log.Println("WARNING: Inefficient grid. Should include 1 stream to gain 8 points.")
 		return 0
 	}
 
@@ -554,14 +569,14 @@ func (e *ecosystem) calculateWolf() int {
 				if !found {
 					found = true
 				} else {
-					log.Println("WARNING: Inefficient grid. More than 1 wolf found, but only 1 sufficient for maximum points.")
+					//log.Println("WARNING: Inefficient grid. More than 1 wolf found, but only 1 sufficient for maximum points.")
 				}
 			}
 		}
 	}
 
 	if !found {
-		log.Println("WARNING: Inefficient grid. Should include 1 wolf to gain 12 points.")
+		//log.Println("WARNING: Inefficient grid. Should include 1 wolf to gain 12 points.")
 		return 0
 	}
 
@@ -577,6 +592,8 @@ func (e *ecosystem) Symbol() string {
 		}
 		out += "\n"
 	}
+
+	out = out[:len(out)-1]
 
 	return out
 }
@@ -678,7 +695,7 @@ func (e *ecosystem) DumpScores() string {
 	out += fmt.Sprintf("Gaps: %v\n", e.Gaps)
 	out += fmt.Sprintf("GapScore: %v\n", e.GapScore)
 	out += "\n"
-	out += fmt.Sprintf("Total: %v\n", e.Total)
+	out += fmt.Sprintf("Total: %v", e.Total)
 
 	return out
 }
