@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	rows    = 4
-	columns = 5
+	rows = 4
+	cols = 5
 
 	Candidates = `
 	bbbbbbbbbbbb
@@ -29,170 +29,140 @@ const (
 	// 	WWWWWWWWWWWW
 )
 
-type ecosystem struct {
-	Cards [][]grid.Card
-
-	BearScore      int
-	BeeScore       int
-	DeerScore      int
-	DragonflyScore int
-	EagleScore     int
-	FoxScore       int
-	MeadowScore    int
-	RabbitScore    int
-	StreamScore    int
-	TroutScore     int
-	WolfScore      int
-
-	Gaps     int
-	GapScore int
-
-	Total int
+type Config struct {
 }
 
-func New() grid.Grid {
-	e := ecosystem{}
+type Ecosystem struct {
+	Cards [rows][cols]grid.Card `json:"-"`
 
-	var cs [][]grid.Card
-	for i := 0; i < rows; i++ {
-		var row []grid.Card
-		for j := 0; j < columns; j++ {
-			vc := card.Vacant{}
-			row = append(row, vc)
-		}
-		cs = append(cs, row)
-	}
+	Gaps int `json:"gaps"`
 
-	e.Cards = cs
-
-	return &e
+	Scores Scores `json:"scores"`
 }
 
-func From(m string) grid.Grid {
-	var cs [][]grid.Card
+type Scores struct {
+	Bear      int `json:"bear"`
+	Bee       int `json:"bee"`
+	Deer      int `json:"deer"`
+	Dragonfly int `json:"dragonfly"`
+	Eagle     int `json:"eagle"`
+	Fox       int `json:"fox"`
+	Meadow    int `json:"meadow"`
+	Rabbit    int `json:"rabbit"`
+	Stream    int `json:"stream"`
+	Trout     int `json:"trout"`
+	Wolf      int `json:"wolf"`
 
-	rawRows := strings.Split(strings.Trim(m, "\n\t "), "\n")
-
-	var rs []string
-	for _, rawRow := range rawRows {
-		if strings.Trim(rawRow, "\t ") != "" {
-			rs = append(rs, rawRow)
-		}
-	}
-
-	if len(rs) != rows {
-		panic("invalid symbol map, incorrect number of rows")
-	}
-
-	for ri, r := range rs {
-		rawSymbols := strings.Split(strings.Trim(r, "\t "), "")
-
-		var symbols []string
-		for _, rawSymbol := range rawSymbols {
-			if strings.Trim(rawSymbol, "\t ") != "" {
-				symbols = append(symbols, strings.Trim(rawSymbol, "\t "))
-			}
-		}
-
-		if len(symbols) != columns {
-			fmt.Println(symbols)
-			panic("invalid symbol map, incorrect number of columns (" + fmt.Sprintf("%v", len(symbols)) + ") in row " + fmt.Sprintf("%v", ri))
-		}
-
-		var row []grid.Card
-		for _, symbol := range symbols {
-			row = append(row, card.From(symbol))
-		}
-
-		cs = append(cs, row)
-	}
-
-	e := ecosystem{
-		Cards: cs,
-	}
-
-	return &e
+	Gaps int `json:"gaps"`
 }
 
-func (e *ecosystem) Place(c grid.Card, l location.Location) {
-	if _, ok := e.At(l).(card.Vacant); !ok {
-		panic(grid.ErrCellAlreadyPopulated)
-	}
+func (s Scores) Total() int {
+	total := 0
 
-	e.Cards[l.X][l.Y] = c
+	total += s.Bear
+	total += s.Bee
+	total += s.Deer
+	total += s.Dragonfly
+	total += s.Eagle
+	total += s.Fox
+	total += s.Meadow
+	total += s.Rabbit
+	total += s.Stream
+	total += s.Trout
+	total += s.Wolf
+
+	total += s.Gaps
+
+	return total
 }
 
-func (e *ecosystem) At(l location.Location) grid.Card {
-	if l.X < 0 || l.X >= rows || l.Y < 0 || l.Y >= columns {
-		return card.Vacant{}
-	}
-	return e.Cards[l.X][l.Y]
+func New(c Config) *Ecosystem {
+	eco := &Ecosystem{}
+
+	return eco
 }
 
-func (e *ecosystem) Adjacent(l location.Location) [4]grid.Card {
+func FromMap(m string) *Ecosystem {
+	eco := &Ecosystem{}
+
+	m = cleanMap(m)
+
+	eco.Cards = mapToCards(m)
+
+	return eco
+}
+
+func (eco *Ecosystem) Place(c grid.Card, l location.Location) {
+	if eco.At(l) != nil {
+		panic("already populated with a card") // TODO
+	}
+
+	c = c.Place(l)
+
+	eco.Cards[l.X][l.Y] = c
+}
+
+func (eco *Ecosystem) At(l location.Location) grid.Card {
+	if l.X < 0 || l.X >= rows || l.Y < 0 || l.Y >= cols {
+		return nil
+	}
+	return eco.Cards[l.X][l.Y]
+}
+
+func (eco *Ecosystem) Adjacent(l location.Location) [4]grid.Card {
 	return [4]grid.Card{
-		e.At(l.Up()),
-		e.At(l.Right()),
-		e.At(l.Down()),
-		e.At(l.Left()),
+		eco.At(l.Up()),
+		eco.At(l.Right()),
+		eco.At(l.Down()),
+		eco.At(l.Left()),
 	}
 }
 
-func (e *ecosystem) DoubleAdjacent(l location.Location) [12]grid.Card {
+func (eco *Ecosystem) DoubleAdjacent(l location.Location) [12]grid.Card {
 	return [12]grid.Card{
-		e.At(l.Up()),
-		e.At(l.Right()),
-		e.At(l.Down()),
-		e.At(l.Left()),
-		e.At(l.Up().Up()),
-		e.At(l.Up().Right()),
-		e.At(l.Up().Left()),
-		e.At(l.Down().Down()),
-		e.At(l.Down().Right()),
-		e.At(l.Down().Left()),
-		e.At(l.Right().Right()),
-		e.At(l.Left().Left()),
+		eco.At(l.Up()),
+		eco.At(l.Right()),
+		eco.At(l.Down()),
+		eco.At(l.Left()),
+		eco.At(l.Up().Up()),
+		eco.At(l.Up().Right()),
+		eco.At(l.Up().Left()),
+		eco.At(l.Down().Down()),
+		eco.At(l.Down().Right()),
+		eco.At(l.Down().Left()),
+		eco.At(l.Right().Right()),
+		eco.At(l.Left().Left()),
 	}
 }
 
-func (e *ecosystem) Calculate() (int, error) {
-	// TODO: If needed, re enable this
-	//for _, row := range e.Cards {
-	//	for _, c := range row {
-	//		switch c.(type) {
-	//		case card.Vacant:
-	//			return 0, grid.ErrPartiallyFilledGrid
-	//		}
-	//	}
-	//}
+func (eco *Ecosystem) Score() (int, error) {
+	eco.Scores.Bear = eco.calculateBear()
+	eco.Scores.Bee = eco.calculateBee()
+	eco.Scores.Deer = eco.calculateDeer()
+	eco.Scores.Dragonfly = eco.calculateDragonfly()
+	eco.Scores.Eagle = eco.calculateEagle()
+	eco.Scores.Fox = eco.calculateFox()
+	eco.Scores.Meadow = eco.calculateMeadow()
+	eco.Scores.Rabbit = eco.calculateRabbit()
+	eco.Scores.Stream = eco.calculateStream()
+	eco.Scores.Trout = eco.calculateTrout()
+	eco.Scores.Wolf = eco.calculateWolf()
 
-	e.BearScore = e.calculateBear()
-	e.BeeScore = e.calculateBee()
-	e.DeerScore = e.calculateDeer()
-	e.DragonflyScore = e.calculateDragonfly()
-	e.EagleScore = e.calculateEagle()
-	e.FoxScore = e.calculateFox()
-	e.MeadowScore = e.calculateMeadow()
-	e.RabbitScore = e.calculateRabbit()
-	e.StreamScore = e.calculateStream()
-	e.TroutScore = e.calculateTrout()
-	e.WolfScore = e.calculateWolf()
+	eco.Gaps = eco.calculateGaps()
+	eco.Scores.Gaps = eco.calculateGapScore()
 
-	e.Gaps = e.calculateGaps()
-	e.GapScore = e.calculateGapScore()
+	total := eco.Scores.Total()
 
-	e.Total = e.calculateTotal()
-
-	return e.Total, nil
+	return total, nil
 }
 
-func (e *ecosystem) calculateBear() int {
+func (eco *Ecosystem) calculateBear() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Bear); ok {
-				acs := e.Adjacent(location.New(x, y))
+				acs := eco.Adjacent(location.New(x, y))
 
 				for _, ac := range acs {
 					switch ac.(type) {
@@ -209,13 +179,13 @@ func (e *ecosystem) calculateBear() int {
 	return v
 }
 
-func (e *ecosystem) calculateBee() int {
+func (eco *Ecosystem) calculateBee() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Bee); ok {
-				acs := e.Adjacent(location.New(x, y))
+				acs := eco.Adjacent(location.New(x, y))
 
 				for _, ac := range acs {
 					switch ac.(type) {
@@ -230,13 +200,13 @@ func (e *ecosystem) calculateBee() int {
 	return v
 }
 
-func (e *ecosystem) calculateDeer() int {
+func (eco *Ecosystem) calculateDeer() int {
 	v := 0
 
 	rowFound := map[int]bool{}
 	colFound := map[int]bool{}
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Deer); ok {
 				rowFound[x] = true
@@ -256,10 +226,10 @@ func (e *ecosystem) calculateDeer() int {
 	return v
 }
 
-func (e *ecosystem) calculateDragonfly() int {
+func (eco *Ecosystem) calculateDragonfly() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Dragonfly); ok {
 				l := location.New(x, y)
@@ -267,42 +237,42 @@ func (e *ecosystem) calculateDragonfly() int {
 				cellChecked := map[string]bool{}
 
 				ul := l.Up()
-				uc := e.At(ul)
+				uc := eco.At(ul)
 				if !cellChecked[ul.Coords()] {
 					cellChecked[ul.Coords()] = true
 
 					if _, ok := uc.(card.Stream); ok {
-						v += e.traverseStream(ul, &cellChecked)
+						v += eco.traverseStream(ul, &cellChecked)
 					}
 				}
 
 				rl := l.Right()
-				rc := e.At(rl)
+				rc := eco.At(rl)
 				if !cellChecked[rl.Coords()] {
 					cellChecked[rl.Coords()] = true
 
 					if _, ok := rc.(card.Stream); ok {
-						v += e.traverseStream(rl, &cellChecked)
+						v += eco.traverseStream(rl, &cellChecked)
 					}
 				}
 
 				dl := l.Down()
-				bc := e.At(dl)
+				bc := eco.At(dl)
 				if !cellChecked[dl.Coords()] {
 					cellChecked[dl.Coords()] = true
 
 					if _, ok := bc.(card.Stream); ok {
-						v += e.traverseStream(dl, &cellChecked)
+						v += eco.traverseStream(dl, &cellChecked)
 					}
 				}
 
 				ll := l.Left()
-				lc := e.At(ll)
+				lc := eco.At(ll)
 				if !cellChecked[ll.Coords()] {
 					cellChecked[ll.Coords()] = true
 
 					if _, ok := lc.(card.Stream); ok {
-						v += e.traverseStream(ll, &cellChecked)
+						v += eco.traverseStream(ll, &cellChecked)
 					}
 				}
 			}
@@ -312,8 +282,8 @@ func (e *ecosystem) calculateDragonfly() int {
 	return v
 }
 
-func (e *ecosystem) traverseStream(l location.Location, cellChecked *map[string]bool) int {
-	if _, ok := e.At(l).(card.Stream); !ok {
+func (eco *Ecosystem) traverseStream(l location.Location, cellChecked *map[string]bool) int {
+	if _, ok := eco.At(l).(card.Stream); !ok {
 		panic("cannot traverseStream from a non-stream card!")
 	}
 
@@ -323,9 +293,9 @@ func (e *ecosystem) traverseStream(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[ul.Coords()] {
 		(*cellChecked)[ul.Coords()] = true
 
-		tc := e.At(ul)
+		tc := eco.At(ul)
 		if _, ok := tc.(card.Stream); ok {
-			d += e.traverseStream(ul, cellChecked)
+			d += eco.traverseStream(ul, cellChecked)
 		}
 	}
 
@@ -333,9 +303,9 @@ func (e *ecosystem) traverseStream(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[rl.Coords()] {
 		(*cellChecked)[rl.Coords()] = true
 
-		rc := e.At(rl)
+		rc := eco.At(rl)
 		if _, ok := rc.(card.Stream); ok {
-			d += e.traverseStream(rl, cellChecked)
+			d += eco.traverseStream(rl, cellChecked)
 		}
 	}
 
@@ -343,9 +313,9 @@ func (e *ecosystem) traverseStream(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[dl.Coords()] {
 		(*cellChecked)[dl.Coords()] = true
 
-		bc := e.At(dl)
+		bc := eco.At(dl)
 		if _, ok := bc.(card.Stream); ok {
-			d += e.traverseStream(dl, cellChecked)
+			d += eco.traverseStream(dl, cellChecked)
 		}
 	}
 
@@ -353,22 +323,22 @@ func (e *ecosystem) traverseStream(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[ll.Coords()] {
 		(*cellChecked)[ll.Coords()] = true
 
-		lc := e.At(ll)
+		lc := eco.At(ll)
 		if _, ok := lc.(card.Stream); ok {
-			d += e.traverseStream(ll, cellChecked)
+			d += eco.traverseStream(ll, cellChecked)
 		}
 	}
 
 	return d
 }
 
-func (e *ecosystem) calculateEagle() int {
+func (eco *Ecosystem) calculateEagle() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Eagle); ok {
-				dacs := e.DoubleAdjacent(location.New(x, y))
+				dacs := eco.DoubleAdjacent(location.New(x, y))
 
 				for _, dac := range dacs {
 					switch dac.(type) {
@@ -385,13 +355,13 @@ func (e *ecosystem) calculateEagle() int {
 	return v
 }
 
-func (e *ecosystem) calculateFox() int {
+func (eco *Ecosystem) calculateFox() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Fox); ok {
-				acs := e.Adjacent(location.New(x, y))
+				acs := eco.Adjacent(location.New(x, y))
 
 				found := false
 				for _, ac := range acs {
@@ -416,12 +386,12 @@ func (e *ecosystem) calculateFox() int {
 	return v
 }
 
-func (e *ecosystem) calculateMeadow() int {
+func (eco *Ecosystem) calculateMeadow() int {
 	v := 0
 
 	cellChecked := map[string]bool{}
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			l := location.New(x, y)
 			if cellChecked[l.Coords()] {
@@ -430,7 +400,7 @@ func (e *ecosystem) calculateMeadow() int {
 			cellChecked[l.Coords()] = true
 
 			if _, ok := c.(card.Meadow); ok {
-				ml := e.traverseMeadow(l, &cellChecked)
+				ml := eco.traverseMeadow(l, &cellChecked)
 				switch ml {
 				case 1:
 					v += 0
@@ -450,8 +420,8 @@ func (e *ecosystem) calculateMeadow() int {
 	return v
 }
 
-func (e *ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]bool) int {
-	if _, ok := e.At(l).(card.Meadow); !ok {
+func (eco *Ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]bool) int {
+	if _, ok := eco.At(l).(card.Meadow); !ok {
 		panic("cannot traverseMeadow from a non-meadow card!")
 	}
 
@@ -461,9 +431,9 @@ func (e *ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[ul.Coords()] {
 		(*cellChecked)[ul.Coords()] = true
 
-		tc := e.At(ul)
+		tc := eco.At(ul)
 		if _, ok := tc.(card.Meadow); ok {
-			d += e.traverseMeadow(ul, cellChecked)
+			d += eco.traverseMeadow(ul, cellChecked)
 		}
 	}
 
@@ -471,9 +441,9 @@ func (e *ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[rl.Coords()] {
 		(*cellChecked)[rl.Coords()] = true
 
-		rc := e.At(rl)
+		rc := eco.At(rl)
 		if _, ok := rc.(card.Meadow); ok {
-			d += e.traverseMeadow(rl, cellChecked)
+			d += eco.traverseMeadow(rl, cellChecked)
 		}
 	}
 
@@ -481,9 +451,9 @@ func (e *ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[dl.Coords()] {
 		(*cellChecked)[dl.Coords()] = true
 
-		bc := e.At(dl)
+		bc := eco.At(dl)
 		if _, ok := bc.(card.Meadow); ok {
-			d += e.traverseMeadow(dl, cellChecked)
+			d += eco.traverseMeadow(dl, cellChecked)
 		}
 	}
 
@@ -491,19 +461,19 @@ func (e *ecosystem) traverseMeadow(l location.Location, cellChecked *map[string]
 	if !(*cellChecked)[ll.Coords()] {
 		(*cellChecked)[ll.Coords()] = true
 
-		lc := e.At(ll)
+		lc := eco.At(ll)
 		if _, ok := lc.(card.Meadow); ok {
-			d += e.traverseMeadow(ll, cellChecked)
+			d += eco.traverseMeadow(ll, cellChecked)
 		}
 	}
 
 	return d
 }
 
-func (e *ecosystem) calculateRabbit() int {
+func (eco *Ecosystem) calculateRabbit() int {
 	v := 0
 
-	for _, row := range e.Cards {
+	for _, row := range eco.Cards {
 		for _, c := range row {
 			if _, ok := c.(card.Rabbit); ok {
 				v++
@@ -514,10 +484,10 @@ func (e *ecosystem) calculateRabbit() int {
 	return v
 }
 
-func (e *ecosystem) calculateStream() int {
+func (eco *Ecosystem) calculateStream() int {
 	found := false
 
-	for _, row := range e.Cards {
+	for _, row := range eco.Cards {
 		for _, c := range row {
 			if _, ok := c.(card.Stream); ok {
 				if !found {
@@ -537,13 +507,13 @@ func (e *ecosystem) calculateStream() int {
 	return 8
 }
 
-func (e *ecosystem) calculateTrout() int {
+func (eco *Ecosystem) calculateTrout() int {
 	v := 0
 
-	for x, row := range e.Cards {
+	for x, row := range eco.Cards {
 		for y, c := range row {
 			if _, ok := c.(card.Trout); ok {
-				acs := e.Adjacent(location.New(x, y))
+				acs := eco.Adjacent(location.New(x, y))
 
 				for _, ac := range acs {
 					switch ac.(type) {
@@ -560,10 +530,10 @@ func (e *ecosystem) calculateTrout() int {
 	return v
 }
 
-func (e *ecosystem) calculateWolf() int {
+func (eco *Ecosystem) calculateWolf() int {
 	found := false
 
-	for _, row := range e.Cards {
+	for _, row := range eco.Cards {
 		for _, c := range row {
 			if _, ok := c.(card.Wolf); ok {
 				if !found {
@@ -583,10 +553,10 @@ func (e *ecosystem) calculateWolf() int {
 	return 12
 }
 
-func (e *ecosystem) Symbol() string {
+func (eco *Ecosystem) Map() string {
 	out := ""
 
-	for _, row := range e.Cards {
+	for _, row := range eco.Cards {
 		for _, c := range row {
 			out += c.Symbol() + " "
 		}
@@ -598,48 +568,54 @@ func (e *ecosystem) Symbol() string {
 	return out
 }
 
-func (e *ecosystem) calculateGaps() int {
+func (eco *Ecosystem) DumpScores() string {
+	// TODO
+	fmt.Println("aint done yet nerd")
+	return ""
+}
+
+func (eco *Ecosystem) calculateGaps() int {
 	gaps := 0
 
-	if e.BearScore == 0 {
+	if eco.Scores.Bear == 0 {
 		gaps++
 	}
-	if e.BeeScore == 0 {
+	if eco.Scores.Bee == 0 {
 		gaps++
 	}
-	if e.DeerScore == 0 {
+	if eco.Scores.Deer == 0 {
 		gaps++
 	}
-	if e.DragonflyScore == 0 {
+	if eco.Scores.Dragonfly == 0 {
 		gaps++
 	}
-	if e.EagleScore == 0 {
+	if eco.Scores.Eagle == 0 {
 		gaps++
 	}
-	if e.FoxScore == 0 {
+	if eco.Scores.Fox == 0 {
 		gaps++
 	}
-	if e.MeadowScore == 0 {
+	if eco.Scores.Meadow == 0 {
 		gaps++
 	}
-	if e.RabbitScore == 0 {
+	if eco.Scores.Rabbit == 0 {
 		gaps++
 	}
-	if e.StreamScore == 0 {
+	if eco.Scores.Stream == 0 {
 		gaps++
 	}
-	if e.TroutScore == 0 {
+	if eco.Scores.Trout == 0 {
 		gaps++
 	}
-	if e.WolfScore == 0 {
+	if eco.Scores.Wolf == 0 {
 		gaps++
 	}
 
 	return gaps
 }
 
-func (e *ecosystem) calculateGapScore() int {
-	switch e.Gaps {
+func (eco *Ecosystem) calculateGapScore() int {
+	switch eco.Gaps {
 	case 0:
 		fallthrough
 	case 1:
@@ -657,45 +633,56 @@ func (e *ecosystem) calculateGapScore() int {
 	}
 }
 
-func (e *ecosystem) calculateTotal() int {
-	total := 0
+func cleanMap(m string) string {
+	m = strings.Trim(m, "\n\t ")
+	lines := strings.Split(m, "\n")
 
-	total += e.BearScore
-	total += e.BeeScore
-	total += e.DeerScore
-	total += e.DragonflyScore
-	total += e.EagleScore
-	total += e.FoxScore
-	total += e.MeadowScore
-	total += e.RabbitScore
-	total += e.StreamScore
-	total += e.TroutScore
-	total += e.WolfScore
+	for li := 0; li < len(lines); li++ {
+		lines[li] = strings.Trim(lines[li], "\t ")
 
-	total += e.GapScore
+		if lines[li] == "" {
+			lines = append(lines[:li], lines[li+1:]...)
+			li--
+			continue
+		}
 
-	return total
+		items := strings.Split(lines[li], "")
+		for ii := 0; ii < len(items); ii++ {
+			if items[ii] == " " {
+				items = append(items[:ii], items[ii+1:]...)
+				ii--
+				continue
+			}
+		}
+
+		if len(items) != cols {
+			panic("invalid symbol map, incorrect number of columns in row") // TODO
+		}
+
+		lines[li] = strings.Join(items, " ")
+	}
+
+	if len(lines) != rows {
+		panic("invalid symbol map, incorrect number of rows") // TODO
+	}
+
+	m = strings.Join(lines, "\n")
+
+	return m
 }
 
-func (e *ecosystem) DumpScores() string {
-	out := ""
+func mapToCards(m string) [rows][cols]grid.Card {
+	cards := [rows][cols]grid.Card{}
 
-	out += fmt.Sprintf("BearScore: %v\n", e.BearScore)
-	out += fmt.Sprintf("BeeScore: %v\n", e.BeeScore)
-	out += fmt.Sprintf("DeerScore: %v\n", e.DeerScore)
-	out += fmt.Sprintf("DragonflyScore: %v\n", e.DragonflyScore)
-	out += fmt.Sprintf("EagleScore: %v\n", e.EagleScore)
-	out += fmt.Sprintf("FoxScore: %v\n", e.FoxScore)
-	out += fmt.Sprintf("MeadowScore: %v\n", e.MeadowScore)
-	out += fmt.Sprintf("RabbitScore: %v\n", e.RabbitScore)
-	out += fmt.Sprintf("StreamScore: %v\n", e.StreamScore)
-	out += fmt.Sprintf("TroutScore: %v\n", e.TroutScore)
-	out += fmt.Sprintf("WolfScore: %v\n", e.WolfScore)
-	out += "\n"
-	out += fmt.Sprintf("Gaps: %v\n", e.Gaps)
-	out += fmt.Sprintf("GapScore: %v\n", e.GapScore)
-	out += "\n"
-	out += fmt.Sprintf("Total: %v", e.Total)
+	lines := strings.Split(m, "\n")
 
-	return out
+	for ri, line := range lines {
+		symbols := strings.Split(line, " ")
+
+		for ci, symbol := range symbols {
+			cards[ri][ci] = card.From(symbol)
+		}
+	}
+
+	return cards
 }

@@ -24,10 +24,10 @@ func From(symbol string) grid.Card {
 		return Stream{}
 	case "T":
 		return Trout{}
-	case "-":
-		return Vacant{}
 	case "W":
 		return Wolf{}
+	case "-":
+		return nil
 	default:
 		panic("cannot create card, invalid symbol provided: \"" + symbol + "\"")
 	}

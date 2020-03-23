@@ -1,6 +1,12 @@
 package card
 
+import (
+	"github.com/Insulince/ecosystem/pkg/grid"
+	"github.com/Insulince/ecosystem/pkg/location"
+)
+
 type Dragonfly struct {
+	Location location.Location
 }
 
 func (d Dragonfly) Value() int {
@@ -13,4 +19,13 @@ func (d Dragonfly) Name() string {
 
 func (d Dragonfly) Symbol() string {
 	return "d"
+}
+
+func (d Dragonfly) Place(l location.Location) grid.Card {
+	d.Location = l
+	return d
+}
+
+func (d Dragonfly) At() location.Location {
+	return d.Location
 }

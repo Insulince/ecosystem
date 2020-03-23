@@ -2,20 +2,30 @@ package engine
 
 import (
 	"fmt"
-	"github.com/Insulince/ecosystem/pkg/grid"
+	"github.com/Insulince/ecosystem/pkg/grid/ecosystem"
 	"math/rand"
 	"strings"
+	"time"
 )
 
 type Engine struct {
 	Candidates   string
 	GridsVisited []string
 	Current      string
-	Best         grid.Grid
+	Best         *ecosystem.Ecosystem
 	BestScore    int
+
+	verbose bool
 }
 
-func New(candidates string) Engine {
+type Config struct {
+	Candidates string
+	Verbose    bool
+}
+
+func New(c Config) Engine {
+	candidates := c.Candidates
+
 	lines := strings.Split(strings.Trim(candidates, "\n\t "), "\n")
 
 	for i := range lines {
@@ -24,9 +34,14 @@ func New(candidates string) Engine {
 
 	candidates = strings.Join(lines, "")
 
-	return Engine{
+	e := Engine{
 		Candidates: candidates,
+		verbose:    c.Verbose,
 	}
+
+	e.NextEcosystem()
+
+	return e
 }
 
 func (e *Engine) NextEcosystem() {
@@ -36,7 +51,7 @@ func (e *Engine) NextEcosystem() {
 	u := 0
 	for !unique {
 		if u > 1000000 {
-			d := e.Best.Symbol()
+			d := e.Best.Map()
 			d += "\n\n" + e.Best.DumpScores()
 			panic("too many non unique, here is dump:\n" + d)
 		}
@@ -117,4 +132,42 @@ func buildRemainingCandidates(can string, usedSpaces int) string {
 		set += c
 	}
 	return set
+}
+
+func (e *Engine) Run() {
+	t := time.Now()
+	for i := 0; i < 1000000000; i++ {
+		if i%10000000 == 0 {
+			fmt.Printf("--- %v - %v (%v)\n", i, e.BestScore, time.Since(t))
+		} else if i%1000000 == 0 {
+			fmt.Printf("------ %v - %v (%v)\n", i, e.BestScore, time.Since(t))
+		} else if i%100000 == 0 {
+			fmt.Printf("--------- %v - %v (%v)\n", i, e.BestScore, time.Since(t))
+		} else if i%25000 == 0 {
+			fmt.Printf("------------ %v - %v\n", i, e.BestScore)
+		}
+
+		e.NextEcosystem()
+
+		eco := ecosystem.FromMap(e.Current)
+
+		v, err := eco.Score()
+		if err != nil {
+			panic(err) // TODO: Handle.
+		}
+
+		if v >= e.BestScore {
+			if v > e.BestScore {
+				fmt.Println("=== NEW BEST ===")
+			}
+			e.Best = eco
+			e.BestScore = v
+			fmt.Printf("=== %v === (@ %v)\n", e.BestScore, i)
+			fmt.Println(e.Best.Map())
+			fmt.Println()
+			fmt.Println(e.Best.DumpScores())
+			fmt.Printf("==========\n")
+		}
+	}
+	fmt.Println(time.Since(t))
 }

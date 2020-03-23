@@ -2,24 +2,32 @@ package main
 
 import (
 	"fmt"
+	"github.com/Insulince/ecosystem/pkg/card"
 	"github.com/Insulince/ecosystem/pkg/grid/ecosystem"
+	"github.com/Insulince/ecosystem/pkg/location"
+	"log"
 )
 
 func main() {
-	m := `
+	ecoMap := `
 	W M M B M
 	D M B M M
 	F M M B M
 	E S T b M
 `
-	e := ecosystem.From(m)
 
-	fmt.Println(e.Symbol())
+	eco := ecosystem.FromMap(ecoMap)
 
-	_, err := e.Calculate()
+	fmt.Println(eco.Map())
+
+	_, err := eco.Score()
 	if err != nil {
-		panic(err)
+		log.Fatalf("%v while calculating ecosystem score\n", err)
 	}
 
-	fmt.Println(e.DumpScores())
+	var b card.Bear = card.Bear{}
+
+	b = b.Place(location.New(0, 0)).(card.Bear)
+
+	fmt.Println(eco.DumpScores())
 }
